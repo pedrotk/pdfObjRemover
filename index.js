@@ -27,22 +27,28 @@ async function run() {
         throw 'Nenhum arquivo PDF encontrado na pasta volumes'
 
     for(const volume of volumes){
-        const doc = await PDFDocument.load(fs.readFileSync(`./volumes/${volume}`));
-        const pages = doc.getPages()
-        for(const page of pages){
-            const resources = page.node.Resources().lookup(PDFName.of('XObject'), PDFDict)
-            for(const [index] of resources.dict.entries()){
-                if(index.encodedName === '/Fm0'){
-                    const imageRef = resources.get(index)
-                    doc.context.delete(imageRef)
-                    const emptyXObject = createEmptyXObject(doc);
-                    doc.context.assign(imageRef, emptyXObject);
+        try{
+            const doc = await PDFDocument.load(fs.readFileSync(`./volumes/${volume}`), {
+                ignoreEncryption: true
+            });
+            const pages = doc.getPages()
+            for(const page of pages){
+                const resources = page.node.Resources().lookup(PDFName.of('XObject'), PDFDict)
+                for(const [index] of resources.dict.entries()){
+                    if(index.encodedName === '/Fm0'){
+                        const imageRef = resources.get(index)
+                        doc.context.delete(imageRef)
+                        const emptyXObject = createEmptyXObject(doc);
+                        doc.context.assign(imageRef, emptyXObject);
+                    }
                 }
             }
-        }
 
-        const pdfDoc2Bytes =  await doc.save()
-        fs.writeFileSync(`./result/${volume}`, await pdfDoc2Bytes);
-        console.log(`finished: ${volume}`)
+            const pdfDoc2Bytes =  await doc.save()
+            fs.writeFileSync(`./result/${volume}`, await pdfDoc2Bytes);
+            console.log(`finished: ${volume}`)
+        }catch (e) {
+            console.log(e)
+        }
     }
 }
